@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Relative Density of Solid Lab</title>
+    <style>
+        :root { --metal-gray: #7f8c8d; --water-blue: rgba(52, 152, 219, 0.4); --bg-color: #f0f2f5; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-color); display: flex; flex-direction: column; align-items: center; margin: 0; padding: 20px; user-select: none; }
+        
+        #main-container { width: 1200px; position: relative; }
+        #lab-title { position: absolute; top: -10px; left: 0; font-size: 1.8em; font-weight: bold; color: #2c3e50; }
+
+        #instruction-box { background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; width: 100%; border-radius: 8px; margin: 50px 0 20px 0; font-weight: 500; text-align: center; box-sizing: border-box; min-height: 55px; }
+
+        #lab-bench { display: flex; gap: 30px; align-items: stretch; width: 100%; }
+
+        #stage { flex: 2; height: 600px; background: white; border: 2px solid #dee2e6; border-radius: 12px; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; }
+
+        #scale { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 280px; height: 50px; background: #adb5bd; border-radius: 6px; border-bottom: 8px solid #6c757d; }
+        #display { background: #212529; color: #00ff00; font-family: 'Courier New', monospace; width: 160px; margin: 12px auto; text-align: center; border-radius: 4px; font-size: 1.3em; padding: 2px; }
+
+        #beaker { width: 140px; height: 200px; border: 3px solid rgba(0,0,0,0.12); border-top: none; border-radius: 0 0 12px 12px; position: absolute; top: 80px; right: 80px; cursor: grab; z-index: 10; background: rgba(255,255,255,0.1); }
+        #water { width: 100%; height: 60%; background: var(--water-blue); position: absolute; bottom: 0; transition: height 0.4s ease; pointer-events: none; border-radius: 0 0 10px 10px; }
+
+        .material { width: 65px; height: 65px; cursor: grab; display: flex; align-items: center; justify-content: center; color: white; border-radius: 6px; font-weight: bold; position: absolute; z-index: 20; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+
+        #sidebar { width: 400px; background: white; padding: 25px; border-radius: 12px; border: 1px solid #dee2e6; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em; }
+        th, td { border: 1px solid #dee2e6; padding: 10px; text-align: center; }
+        th { background: #343a40; color: white; }
+        .rd-val { font-weight: bold; color: #007bff; }
+
+        .btn-reset { width: 100%; padding: 15px; margin-top: 20px; cursor: pointer; background: #f8f9fa; border: 1px solid #ccc; border-radius: 6px; font-weight: bold; transition: background 0.2s; }
+        .btn-reset:hover { background: #e9ecef; }
+    </style>
+</head>
+<body>
+
+<div id="main-container">
+    <div id="lab-title">Relative Density of Solid Lab</div>
+
+    <div id="instruction-box">Step 1: Place a metal sample on the scale to find <b>Weight in Air (W<sub>air</sub>)</b>.</div>
+
+    <div id="lab-bench">
+        <div id="stage">
+            <div id="beaker" class="draggable">
+                <div id="water"></div>
+            </div>
+            <div id="scale"><div id="display">0.00 g</div></div>
+
+            <div class="material draggable" id="Al" style="background: #bdc3c7; top: 40px; left: 40px;">Al</div>
+            <div class="material draggable" id="Fe" style="background: #7f8c8d; top: 130px; left: 40px;">Fe</div>
+            <div class="material draggable" id="Cu" style="background: #e67e22; top: 220px; left: 40px;">Cu</div>
+            <div class="material draggable" id="Pb" style="background: #34495e; top: 310px; left: 40px;">Pb</div>
+        </div>
+
+        <div id="sidebar">
+            <h3 style="margin-top: 0;">Observation Table</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Material</th>
+                        <th>W<sub>air</sub> (g)</th>
+                        <th>W<sub>sys</sub> (g)</th>
+                        <th>W<sub>susp</sub> (g)</th>
+                        <th>R.D.</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <tr id="row-Al"><td>Al</td><td>-</td><td>-</td><td>-</td><td class="rd-val">-</td></tr>
+                    <tr id="row-Fe"><td>Fe</td><td>-</td><td>-</td><td>-</td><td class="rd-val">-</td></tr>
+                    <tr id="row-Cu"><td>Cu</td><td>-</td><td>-</td><td>-</td><td class="rd-val">-</td></tr>
+                    <tr id="row-Pb"><td>Pb</td><td>-</td><td>-</td><td>-</td><td class="rd-val">-</td></tr>
+                </tbody>
+            </table>
+            <div style="font-size: 0.85em; color: #666; margin-top: 20px; line-height: 1.4;">
+                <p><b>W<sub>sys</sub></b>: Weight of Beaker + Water</p>
+                <p><b>W<sub>susp</sub></b>: Weight when metal is suspended in water</p>
+                <p><b>Relative Density (R.D.) Formula:</b><br>
+    RD = W<sub>air</sub> / (W<sub>susp</sub> - W<sub>sys</sub>)
+</p>
+            </div>
+            <button class="btn-reset" onclick="location.reload()">Reset Experiment</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let activeEl = null;
+    let offset = { x: 0, y: 0 };
+
+    // Physics data based on your specific requirements
+    // Volume is derived as Mass / RD
+    const physics = {
+        'Al': { mass: 108.0, rd: 2.7, vol: 108/2.7 },    // Vol = 40.0
+        'Fe': { mass: 95.0,  rd: 7.9, vol: 95/7.9 },     // Vol = 12.025
+        'Cu': { mass: 112.0, rd: 8.9, vol: 112/8.9 },    // Vol = 12.584
+        'Pb': { mass: 104.0, rd: 11.3, vol: 104/11.3 }   // Vol = 9.203
+    };
+    
+    const waterBaseWeight = 450.0; // Constant weight of beaker + water
+
+    document.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('draggable')) {
+            activeEl = e.target;
+            const rect = activeEl.getBoundingClientRect();
+            offset.x = e.clientX - rect.left;
+            offset.y = e.clientY - rect.top;
+            activeEl.style.cursor = 'grabbing';
+            activeEl.style.zIndex = 1000;
+        }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!activeEl) return;
+        
+        const stage = document.getElementById('stage').getBoundingClientRect();
+        let left = e.clientX - stage.left - offset.x;
+        let top = e.clientY - stage.top - offset.y;
+
+        left = Math.max(0, Math.min(left, stage.width - activeEl.offsetWidth));
+        top = Math.max(0, Math.min(top, stage.height - activeEl.offsetHeight));
+
+        activeEl.style.left = left + 'px';
+        activeEl.style.top = top + 'px';
+        
+        calculatePhysics();
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (activeEl) {
+            activeEl.style.cursor = 'grab';
+            activeEl.style.zIndex = activeEl.id === 'beaker' ? 10 : 20;
+            activeEl = null;
+        }
+    });
+
+    function calculatePhysics() {
+        const scale = document.getElementById('scale').getBoundingClientRect();
+        const beaker = document.getElementById('beaker').getBoundingClientRect();
+        const display = document.getElementById('display');
+        const water = document.getElementById('water');
+        
+        let currentScaleWeight = 0;
+        let beakerOnScale = (beaker.bottom > scale.top && beaker.left > scale.left && beaker.right < scale.right);
+
+        if (beakerOnScale) {
+            currentScaleWeight = waterBaseWeight;
+            updateRow('all', 2, waterBaseWeight.toFixed(2));
+            document.getElementById('instruction-box').innerHTML = "Step 3: W<sub>sys</sub> recorded. Now <b>suspend</b> the metal inside the water.";
+        }
+
+        document.querySelectorAll('.material').forEach(mat => {
+            const mRect = mat.getBoundingClientRect();
+            const data = physics[mat.id];
+
+            // Condition 1: Metal alone on scale (Weight in Air)
+            if (mRect.bottom > scale.top && mRect.left > scale.left && mRect.right < scale.right && !beakerOnScale) {
+                currentScaleWeight = data.mass;
+                updateRow(mat.id, 1, data.mass.toFixed(2));
+                document.getElementById('instruction-box').innerHTML = "Step 2: W<sub>air</sub> recorded. Now place the <b>beaker</b> on the scale.";
+            }
+
+            // Condition 2: Metal inside beaker
+            if (mRect.top > beaker.top && mRect.bottom < beaker.bottom && mRect.left > beaker.left && mRect.right < beaker.right) {
+                if (beakerOnScale) {
+                    // Buoyancy logic: Scale weight increases by weight of displaced liquid
+                    // Since water density is 1g/cm3, increase = Volume of metal
+                    currentScaleWeight = waterBaseWeight + data.vol;
+                    
+                    // Visual water level rise (proportional to volume)
+                    const levelRise = (data.vol / 50) * 20; 
+                    water.style.height = (60 + levelRise) + "%";
+                    
+                    updateRow(mat.id, 3, currentScaleWeight.toFixed(2));
+                    
+                    // Calculate RD
+                    const row = document.getElementById('row-' + mat.id);
+                    const wAir = parseFloat(row.cells[1].innerText);
+                    if (!isNaN(wAir)) {
+                        const calculatedRD = wAir / (currentScaleWeight - waterBaseWeight);
+                        row.cells[4].innerText = calculatedRD.toFixed(2);
+                        document.getElementById('instruction-box').innerHTML = "Success! Calculation complete for " + mat.id;
+                    }
+                }
+            }
+        });
+
+        // Reset water level if nothing is inside
+        const anyInBeaker = Array.from(document.querySelectorAll('.material')).some(m => {
+            let r = m.getBoundingClientRect();
+            return (r.top > beaker.top && r.bottom < beaker.bottom && r.left > beaker.left && r.right < beaker.right);
+        });
+        if (!anyInBeaker) water.style.height = "60%";
+
+        display.innerText = currentScaleWeight > 0 ? currentScaleWeight.toFixed(2) + " g" : "0.00 g";
+    }
+
+    function updateRow(id, cellIdx, val) {
+        if (id === 'all') {
+            document.querySelectorAll('tbody tr').forEach(r => r.cells[cellIdx].innerText = val);
+        } else {
+            document.getElementById('row-' + id).cells[cellIdx].innerText = val;
+        }
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Density of Solid Lab - 150mL Version</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        :root { --metal-gray: #7f8c8d; --water-blue: rgba(52, 152, 219, 0.5); --bg-color: #f0f2f5; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg-color); display: flex; flex-direction: column; align-items: center; margin: 0; padding: 20px; user-select: none; }
+        
+        #main-container { width: 1300px; position: relative; }
+        #lab-title { position: absolute; top: -10px; left: 0; font-size: 1.8em; font-weight: bold; color: #2c3e50; }
+
+        #instruction-box { background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; width: 100%; border-radius: 8px; margin: 50px 0 20px 0; font-weight: 500; text-align: center; box-sizing: border-box; }
+
+        #lab-bench { display: flex; gap: 30px; width: 100%; height: 700px; }
+
+        #stage { flex: 2; background: white; border: 2px solid #dee2e6; border-radius: 12px; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+
+        #balance { position: absolute; bottom: 100px; left: 300px; width: 220px; height: 40px; background: #adb5bd; border-radius: 4px; border-bottom: 8px solid #6c757d; }
+        #display { background: #212529; color: #00ff00; font-family: 'Courier New', monospace; width: 110px; margin: 10px auto; text-align: center; border-radius: 4px; font-size: 1.1em; padding: 2px; }
+
+        #cylinder-area { position: absolute; bottom: 100px; left: 650px; width: 100px; height: 450px; display: flex; flex-direction: column; align-items: center; }
+        #cylinder { width: 75px; height: 420px; border: 3px solid rgba(0,0,0,0.2); border-top: none; border-radius: 0 0 15px 15px; position: relative; background: rgba(255,255,255,0.4); overflow: hidden; }
+        #water { width: 100%; height: 33.33%; background: var(--water-blue); position: absolute; bottom: 0; transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1); border-top: 3px solid #3498db; }
+        
+        .ticks-container { position: absolute; width: 100%; height: 100%; pointer-events: none; }
+        .tick-major { position: absolute; right: 0; width: 25px; height: 2px; background: #444; }
+        .tick-minor { position: absolute; right: 0; width: 12px; height: 1px; background: #999; }
+        .label-major { position: absolute; right: 30px; font-size: 11px; font-weight: bold; color: #333; transform: translateY(-50%); }
+
+        .material { width: 60px; height: 60px; cursor: grab; display: flex; align-items: center; justify-content: center; color: white; border-radius: 6px; font-weight: bold; position: absolute; z-index: 20; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+
+        #sidebar { width: 350px; background: white; padding: 25px; border-radius: 12px; border: 1px solid #dee2e6; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.95em; }
+        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: center; }
+        th { background: #343a40; color: white; }
+        .calc-val { font-weight: bold; color: #d35400; }
+        .btn-reset { width: 100%; padding: 15px; margin-top: 30px; cursor: pointer; background: #f8f9fa; border: 1px solid #ccc; border-radius: 6px; font-weight: bold; }
+        
+        .formula-box { margin-top: 25px; padding: 15px; background: #e8f4fd; border-radius: 8px; border: 1px solid #b3d7f2; text-align: center; font-size: 0.95em; line-height: 2; }
+    </style>
+</head>
+<body>
+
+<div id="main-container">
+    <div id="lab-title">Density of Solid Lab</div>
+    <div id="instruction-box">Step 1: Place a solid on the balance to measure its <b>Mass (m)</b>.</div>
+
+    <div id="lab-bench">
+        <div id="stage">
+            <div id="balance"><div id="display">0.00 g</div></div>
+            <div id="cylinder-area">
+                <div style="font-weight: bold; margin-bottom: 5px;">150 mL</div>
+                <div id="cylinder">
+                    <div id="water"></div>
+                    <div class="ticks-container" id="ticks"></div>
+                </div>
+            </div>
+
+            <div class="material draggable" id="Al" style="background: #95a5a6; top: 40px; left: 40px;">Al</div>
+            <div class="material draggable" id="Fe" style="background: #7f8c8d; top: 130px; left: 40px;">Fe</div>
+            <div class="material draggable" id="Cu" style="background: #d35400; top: 220px; left: 40px;">Cu</div>
+            <div class="material draggable" id="Pb" style="background: #2c3e50; top: 310px; left: 40px;">Pb</div>
+        </div>
+
+        <div id="sidebar">
+            <h3 style="margin-top:0">Observation Table</h3>
+            <table>
+                <thead>
+                    <tr><th>Solid</th><th>m (g)</th><th>V<sub>1</sub></th><th>V<sub>2</sub></th><th class="calc-val">ρ</th></tr>
+                </thead>
+                <tbody id="obs-table">
+                    <tr id="row-Al"><td>Al</td><td>-</td><td>50</td><td>-</td><td class="calc-val">-</td></tr>
+                    <tr id="row-Fe"><td>Fe</td><td>-</td><td>50</td><td>-</td><td class="calc-val">-</td></tr>
+                    <tr id="row-Cu"><td>Cu</td><td>-</td><td>50</td><td>-</td><td class="calc-val">-</td></tr>
+                    <tr id="row-Pb"><td>Pb</td><td>-</td><td>50</td><td>-</td><td class="calc-val">-</td></tr>
+                </tbody>
+            </table>
+            <button class="btn-reset" onclick="location.reload()">Reset</button>
+
+            <div class="formula-box">
+                <strong>Key Formulas:</strong><br>
+                \[ \text{Density } (\rho) = \frac{\text{Mass } (m)}{\text{Volume } (V)} \]
+                <hr style="border: 0; border-top: 1px solid #b3d7f2; margin: 10px 0;">
+                <strong>Conversion Unit:</strong><br>
+                \[ 1\text{ mL} = 1\text{ cm}^3 \]
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let activeEl = null;
+    let offset = { x: 0, y: 0 };
+    const v1 = 50; 
+    const max_v = 150;
+    
+    // Physics constants producing unique V2 levels (60, 70, 80, 90 mL)
+    const physics = {
+        'Pb': { mass: 104, vol: 9 },  
+        'Al': { mass: 108, vol: 40 },   
+        'Fe': { mass: 95, vol: 12 },  
+        'Cu': { mass: 112, vol: 13 }   
+    };
+
+    function createTicks(containerId) {
+        const container = document.getElementById(containerId);
+        if(!container) return;
+        for (let i = 0; i <= max_v; i += 2) {
+            const bottomPos = (i / max_v) * 100;
+            if (i % 10 === 0) {
+                const tick = document.createElement('div');
+                tick.className = 'tick-major'; tick.style.bottom = bottomPos + '%';
+                container.appendChild(tick);
+                const label = document.createElement('span');
+                label.className = 'label-major'; label.style.bottom = bottomPos + '%';
+                label.innerText = i; container.appendChild(label);
+            } else {
+                const tick = document.createElement('div');
+                tick.className = 'tick-minor'; tick.style.bottom = bottomPos + '%';
+                container.appendChild(tick);
+            }
+        }
+    }
+    createTicks('ticks');
+
+    document.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('draggable')) {
+            activeEl = e.target;
+            const rect = activeEl.getBoundingClientRect();
+            offset.x = e.clientX - rect.left; offset.y = e.clientY - rect.top;
+            activeEl.style.zIndex = 1000;
+        }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!activeEl) return;
+        const stage = document.getElementById('stage').getBoundingClientRect();
+        activeEl.style.left = (e.clientX - stage.left - offset.x) + 'px';
+        activeEl.style.top = (e.clientY - stage.top - offset.y) + 'px';
+        runPhysics();
+    });
+
+    document.addEventListener('mouseup', () => { activeEl = null; });
+
+    function runPhysics() {
+        const balance = document.getElementById('balance').getBoundingClientRect();
+        const cylinder = document.getElementById('cylinder').getBoundingClientRect();
+        const water = document.getElementById('water');
+        const display = document.getElementById('display');
+        let weight = 0;
+
+        document.querySelectorAll('.material').forEach(mat => {
+            const mRect = mat.getBoundingClientRect();
+            const data = physics[mat.id];
+
+            // Weighing logic
+            if (mRect.bottom > balance.top && mRect.left > balance.left && mRect.right < balance.right && mRect.bottom < balance.bottom + 20) {
+                weight = data.mass;
+                document.getElementById('row-' + mat.id).cells[1].innerText = data.mass;
+                document.getElementById('instruction-box').innerHTML = "Step 2: Mass recorded. Note <b>V<sub>1</sub></b>, then immerse the solid.";
+            }
+
+            // Displacement logic
+            if (mRect.left > cylinder.left && mRect.right < cylinder.right && mRect.bottom > cylinder.top + 100) {
+                const v2 = v1 + data.vol;
+                const h_pct = (v2 / max_v) * 100 + "%";
+                water.style.height = h_pct;
+                document.getElementById('row-' + mat.id).cells[3].innerText = v2;
+                
+                const m = parseFloat(document.getElementById('row-' + mat.id).cells[1].innerText);
+                if (!isNaN(m)) {
+                    document.getElementById('row-' + mat.id).cells[4].innerText = (m / (v2 - v1)).toFixed(2);
+                }
+            } else {
+                const anyIn = Array.from(document.querySelectorAll('.material')).some(m => {
+                    let r = m.getBoundingClientRect();
+                    return (r.left > cylinder.left && r.right < cylinder.right && r.bottom > cylinder.top + 100);
+                });
+                if (!anyIn) {
+                    const h_base = (v1 / max_v) * 100 + "%";
+                    water.style.height = h_base;
+                }
+            }
+        });
+        display.innerText = weight > 0 ? weight.toFixed(2) + " g" : "0.00 g";
+    }
+</script>
+</body>
+</html>

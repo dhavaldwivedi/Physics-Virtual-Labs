@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Vertical Throw - Final Layout</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 0; background:#0b0f17; color:#e8eefc; overflow-x: hidden; }
+    .wrap { display:grid; grid-template-columns: 1fr 360px; gap: 16px; padding: 16px; max-width: 1500px; margin: 0 auto; }
+    
+    canvas { 
+      width: 100%; 
+      height: 950px; 
+      background:#080c14; 
+      border:1px solid rgba(255,255,255,.1); 
+      border-radius: 12px;
+      display: block;
+    }
+
+    .panel { background:#0f1625; border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:16px; height: fit-content; }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:12px 0; }
+    label { font-size: 13px; opacity:.9; }
+    input[type="range"] { width: 100%; cursor: pointer; }
+    .readout { font-variant-numeric: tabular-nums; font-size: 14px; text-align:right; font-weight: bold; color: #4fc3f7; }
+    .btns { display:flex; gap:10px; margin-top:15px; }
+    button {
+      flex:1; padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,.15);
+      background:#1a2536; color:#e8eefc; cursor:pointer; font-weight: 600; transition: 0.2s;
+    }
+    button:hover { background: #25354d; border-color: #4fc3f7; }
+    .small { font-size: 12px; opacity:.7; }
+    hr { border:none; border-top:1px solid rgba(255,255,255,.1); margin:16px 0; }
+    
+    .formulaBox {
+      background: rgba(79, 195, 247, 0.05);
+      border: 1px solid rgba(79, 195, 247, 0.2);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #b3e5fc;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <canvas id="c" width="1150" height="950"></canvas>
+
+    <div class="panel">
+      <div class="row"><strong style="font-size: 1.0em;">Physics Gravitation Lab (Motion in 1D)</strong></div>
+      
+      <div class="row">
+        <label>Initial velocity (u)</label>
+        <span class="readout" id="uVal">30.00 m/s</span>
+      </div>
+      <input id="u" type="range" min="1" max="80" step="0.5" value="30" />
+
+      <div class="row">
+        <label>Gravity (g)</label>
+        <span class="readout" id="gVal">9.80 m/s²</span>
+      </div>
+      <input id="g" type="range" min="1" max="30" step="0.1" value="9.8" />
+      
+      <div class="btns">
+        <button id="start" style="background: #2e7d32;">LAUNCH</button>
+        <button id="reset">RESET</button>
+      </div>
+
+      <hr />
+      <div class="row"><strong>Final Results</strong></div>
+      <div id="formulaBox" class="formulaBox">Waiting for landing...</div>
+      <div class="row"><span class="small">Theoretical H-Max</span><span class="readout" id="theoH">—</span></div>
+      <div class="row"><span class="small">Theoretical Total Time</span><span class="readout" id="theoT">—</span></div>
+
+      <hr />
+      <div class="row"><strong>Live Telemetry</strong></div>
+      <div class="row"><span class="small">Current Height (y)</span><span class="readout" id="yLive">0.00 m</span></div>
+      <div class="row"><span class="small">Peak Caught</span><span class="readout" id="hMaxLive" style="color: #ff5252;">0.00 m</span></div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+
+    const uSlider = document.getElementById("u"), gSlider = document.getElementById("g");
+    const uVal = document.getElementById("uVal"), gVal = document.getElementById("gVal");
+    const yLive = document.getElementById("yLive"), hMaxLive = document.getElementById("hMaxLive");
+    const theoH = document.getElementById("theoH"), theoT = document.getElementById("theoT");
+    const startBtn = document.getElementById("start"), resetBtn = document.getElementById("reset");
+    const formulaBox = document.getElementById("formulaBox");
+
+    let running = false, t = 0, y = 0, v = 0, maxObservedY = 0;
+    let u0 = 30, g = 9.8;
+    let hasReachedPeak = false;
+    let graphPts = [];
+    let answers = { Hmax: 0, T: 0 };
+
+    const PXM = 8; 
+    const ballRadius = 18;
+    const xBall = 420;
+    const groundY = 600;
+    const graphRect = { x: 100, y: 680, w: 950, h: 220 };
+
+    function sync() {
+      u0 = parseFloat(uSlider.value);
+      g = parseFloat(gSlider.value);
+      uVal.textContent = u0.toFixed(2) + " m/s";
+      gVal.textContent = g.toFixed(2) + " m/s²";
+      answers.Hmax = (u0 * u0) / (2 * g);
+      answers.T = (2 * u0) / g;
+    }
+
+    function showResults() {
+      theoH.textContent = answers.Hmax.toFixed(2) + " m";
+      theoT.textContent = answers.T.toFixed(2) + " s";
+      formulaBox.innerHTML = `Hmax = u² / 2g = <b>${answers.Hmax.toFixed(2)}m</b><br>Time = 2u / g = <b>${answers.T.toFixed(2)}s</b>`;
+    }
+
+    function drawRuler() {
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.3)";
+      ctx.fillStyle = "#4fc3f7";
+      ctx.font = "bold 16px monospace";
+      const startX = 80;
+      for (let m = 0; m <= 150; m += 10) {
+        const yPos = groundY - (m * PXM);
+        if (yPos < -50 || yPos > groundY + 10) continue; 
+        ctx.beginPath();
+        ctx.moveTo(startX, yPos);
+        ctx.lineTo(startX + 20, yPos);
+        ctx.stroke();
+        ctx.fillText(m + "m", startX - 55, yPos + 6);
+      }
+      ctx.restore();
+    }
+
+    function drawGraph() {
+      const {x, y, w, h} = graphRect;
+      ctx.fillStyle = "rgba(0,0,0,0.7)";
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = "rgba(255,255,255,0.4)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, w, h);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 14px system-ui";
+      ctx.textAlign = "center";
+      ctx.fillText("Time (seconds)", x + w/2, y + h + 40);
+      
+      ctx.save();
+      ctx.translate(x - 70, y + h/2);
+      ctx.rotate(-Math.PI/2);
+      ctx.fillText("Height (meters)", 0, 0);
+      ctx.restore();
+
+      ctx.font = "13px monospace";
+      ctx.fillStyle = "#4fc3f7";
+      ctx.textAlign = "right";
+      ctx.fillText(answers.Hmax.toFixed(2) + "m", x - 10, y + 15);
+      ctx.fillText("0.00m", x - 10, y + h);
+      ctx.textAlign = "center";
+      ctx.fillText("0.00s", x, y + h + 20);
+      ctx.fillText(answers.T.toFixed(2) + "s", x + w, y + h + 20);
+
+      if (graphPts.length < 2) return;
+
+      ctx.beginPath();
+      ctx.strokeStyle = "#4fc3f7";
+      ctx.lineWidth = 3;
+      graphPts.forEach((pt, i) => {
+        const px = x + (pt.t / answers.T) * w;
+        const py = (y + h) - (pt.y / answers.Hmax) * h;
+        if (px > x + w) return; 
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#080c14";
+      ctx.fillRect(0, 0, canvas.width, groundY);
+
+      drawRuler();
+
+      ctx.fillStyle = "#0e141f";
+      ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+      ctx.strokeStyle = "#4fc3f7";
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(0, groundY); ctx.lineTo(canvas.width, groundY); ctx.stroke();
+
+      if (hasReachedPeak) {
+        ctx.save();
+        ctx.setLineDash([10, 5]);
+        ctx.strokeStyle = "rgba(255, 82, 82, 0.6)";
+        ctx.lineWidth = 2;
+        const peakCanvasY = groundY - (maxObservedY * PXM) - ballRadius;
+        ctx.beginPath();
+        ctx.moveTo(0, peakCanvasY); ctx.lineTo(canvas.width, peakCanvasY);
+        ctx.stroke();
+        
+        ctx.fillStyle = "#ff5252";
+        ctx.font = "bold 14px system-ui";
+        // CHANGED: Increased X coordinate from 110 to 600 to shift right
+        ctx.fillText(`EXACT PEAK: ${maxObservedY.toFixed(2)}m`, 600, peakCanvasY - 12);
+        ctx.restore();
+      }
+
+      const ballCanvasY = groundY - (y * PXM) - ballRadius;
+      ctx.save();
+      ctx.fillStyle = "#ff5252";
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = "#ff5252";
+      ctx.beginPath();
+      ctx.arc(xBall, ballCanvasY, ballRadius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = "rgba(255,255,255,0.3)";
+      ctx.beginPath(); ctx.arc(xBall - 6, ballCanvasY - 6, 6, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 16px system-ui";
+      const labelY = Math.max(40, ballCanvasY - 15);
+      ctx.fillText(`${y.toFixed(2)} m`, xBall + 30, labelY);
+      ctx.restore();
+
+      drawGraph();
+    }
+
+    function step() {
+      if (!running) return;
+
+      const dt = 0.016; 
+      t += dt;
+
+      // Exact Physics y = ut - 1/2gt^2
+      y = (u0 * t) - (0.5 * g * (t ** 2));
+      v = u0 - (g * t);
+
+      if (!hasReachedPeak && v <= 0) {
+        hasReachedPeak = true;
+      }
+
+      if (y > maxObservedY) maxObservedY = y;
+
+      if (t >= answers.T) {
+        y = 0; v = 0; running = false;
+        startBtn.textContent = "LAUNCH";
+        startBtn.style.background = "#2e7d32";
+        showResults(); 
+      }
+
+      graphPts.push({t, y: Math.max(0, y)});
+      yLive.textContent = `${Math.max(0, y).toFixed(2)} m`;
+      hMaxLive.textContent = `${maxObservedY.toFixed(2)} m`;
+    }
+
+    function loop() {
+      step();
+      render();
+      requestAnimationFrame(loop);
+    }
+
+    startBtn.onclick = () => {
+      if (!running) {
+        sync();
+        t = 0; y = 0; v = u0; maxObservedY = 0;
+        graphPts = [{t: 0, y: 0}];
+        hasReachedPeak = false;
+        running = true;
+        theoH.textContent = "Processing...";
+        theoT.textContent = "Processing...";
+        formulaBox.innerHTML = `Ball in flight...`;
+        startBtn.textContent = "RESET SIM";
+        startBtn.style.background = "#c62828";
+      } else {
+        resetBtn.click();
+      }
+    };
+
+    resetBtn.onclick = () => {
+      running = false; t = 0; y = 0; v = 0; maxObservedY = 0;
+      hasReachedPeak = false;
+      graphPts = [];
+      yLive.textContent = "0.00 m";
+      hMaxLive.textContent = "0.00 m";
+      theoH.textContent = "—";
+      theoT.textContent = "—";
+      formulaBox.innerHTML = "Waiting for landing...";
+      startBtn.textContent = "LAUNCH";
+      startBtn.style.background = "#2e7d32";
+      sync();
+    };
+
+    uSlider.oninput = sync;
+    gSlider.oninput = sync;
+    sync();
+    loop();
+  </script>
+</body>
+</html>

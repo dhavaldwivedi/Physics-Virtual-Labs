@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Lab: Reflection - Dark Red Edition</title>
+    <style>
+        :root {
+            --sidebar-width: 280px;
+            --bg-color: #05080f; /* Extra dark background */
+            --panel-bg: #1e293b;
+            --accent: #38bdf8;
+            --laser-red: #b91c1c; /* Deep Ruby Red */
+            --text: #f1f5f9;
+        }
+
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; background: var(--bg-color); color: var(--text); overflow: hidden; }
+        #app { display: flex; height: 100vh; }
+        #sidebar { width: var(--sidebar-width); background: var(--panel-bg); padding: 20px; box-shadow: 4px 0 15px rgba(0,0,0,0.5); z-index: 20; border-right: 1px solid rgba(255,255,255,0.1); }
+        .control-group { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        #canvas-container { flex-grow: 1; position: relative; background: var(--bg-color); }
+        canvas { display: block; }
+        .angle-readout { position: absolute; top: 20px; left: 20px; background: rgba(15, 23, 42, 0.9); padding: 12px; border-radius: 8px; border-left: 4px solid var(--laser-red); font-family: monospace; font-size: 1.2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+        button { background: #991b1b; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; transition: background 0.2s; }
+        button:hover { background: #7f1d1d; }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="sidebar">
+        <h2 style="color: var(--laser-red); margin-top: 0;">Law of Reflection Lab</Label></h2>
+        <div class="control-group">
+            <label style="display: block; cursor: pointer;"><input type="checkbox" id="showNormal" checked> Show Normal Line</label><br>
+            <label style="display: block; cursor: pointer;"><input type="checkbox" id="showArcs" checked> Show Angle Arcs</label><br>
+            <label style="display: block; cursor: pointer;"><input type="checkbox" id="showProtractor" checked> Show Protractor</label>
+        </div>
+        <div style="font-size: 0.9rem; line-height: 1.5; opacity: 0.8; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px;">
+            <b>Physics Key:</b><br>
+            <span style="color: #4ade80">● θᵢ : Incident (Green)</span><br>
+            <span style="color: #fbbf24">● θᵣ : Reflected (Yellow)</span>
+        </div>
+        <br>
+        <button onclick="resetLab()">Reset</button>
+    </div>
+
+    <div id="canvas-container">
+        <div class="angle-readout" id="readout">θᵢ : 0.0° | θᵣ : 0.0°</div>
+        <canvas id="mainCanvas"></canvas>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('canvas-container');
+    const readout = document.getElementById('readout');
+
+    let laser = { x: 250, y: 150, angle: 0.7 };
+    let protractor = { x: 450, y: 450, radius: 150 };
+    let dragging = null;
+
+    function resize() {
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        render();
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    canvas.addEventListener('mousedown', e => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const handleX = laser.x + Math.cos(laser.angle) * 60;
+        const handleY = laser.y + Math.sin(laser.angle) * 60;
+
+        if (Math.hypot(mx - handleX, my - handleY) < 15) dragging = 'rotation';
+        else if (Math.hypot(mx - laser.x, my - laser.y) < 30) dragging = 'laser';
+        else if (document.getElementById('showProtractor').checked && Math.hypot(mx - protractor.x, my - protractor.y) < 60) dragging = 'protractor';
+    });
+
+    window.addEventListener('mousemove', e => {
+        if (!dragging) return;
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const mirrorY = canvas.height / 2 + 100;
+
+        if (dragging === 'laser') { laser.x = mx; laser.y = Math.min(my, mirrorY - 60); }
+        else if (dragging === 'rotation') { laser.angle = Math.atan2(my - laser.y, mx - laser.x); }
+        else if (dragging === 'protractor') { protractor.x = mx; protractor.y = my; }
+        render();
+    });
+
+    window.addEventListener('mouseup', () => dragging = null);
+
+    function resetLab() { laser = { x: 250, y: 150, angle: 0.7 }; render(); }
+
+    function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const mirrorY = canvas.height / 2 + 100;
+        const showNormal = document.getElementById('showNormal').checked;
+        const showArcs = document.getElementById('showArcs').checked;
+        const showProtractor = document.getElementById('showProtractor').checked;
+
+        // 1. Mirror
+        ctx.strokeStyle = '#334155'; ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.moveTo(50, mirrorY); ctx.lineTo(canvas.width - 50, mirrorY); ctx.stroke();
+        
+        const dx = Math.cos(laser.angle);
+        const dy = Math.sin(laser.angle);
+
+        if (dy > 0) {
+            const t = (mirrorY - laser.y) / dy;
+            const intersectX = laser.x + dx * t;
+
+            if (intersectX > 50 && intersectX < canvas.width - 50) {
+                // DARK RED RAY RENDERING
+                ctx.lineWidth = 6; 
+                ctx.strokeStyle = '#b91c1c'; // Ruby Red
+                ctx.shadowBlur = 8; 
+                ctx.shadowColor = '#b91c1c';
+                
+                // Incident
+                ctx.beginPath(); ctx.moveTo(laser.x, laser.y); ctx.lineTo(intersectX, mirrorY); ctx.stroke();
+                // Reflected
+                ctx.beginPath(); ctx.moveTo(intersectX, mirrorY); ctx.lineTo(intersectX + dx * 1000, mirrorY - dy * 1000); ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // 2. Darkened Normal Line
+                if (showNormal) {
+                    ctx.setLineDash([8, 8]); ctx.strokeStyle = '#475569'; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(intersectX, mirrorY); ctx.lineTo(intersectX, mirrorY - 300); ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                // 3. Angle Calculations
+                const incidentRad = Math.atan2(laser.y - mirrorY, laser.x - intersectX);
+                const reflectedRad = Math.atan2((mirrorY - (mirrorY - laser.y)) - mirrorY, (intersectX + (intersectX - laser.x)) - intersectX);
+                const normalRad = -Math.PI/2;
+                const deg = Math.abs((Math.atan2(dy, dx) - normalRad) * 180 / Math.PI);
+                const displayDeg = deg > 90 ? 180 - deg : deg;
+
+                if (showArcs) {
+                    const r = 70; ctx.lineWidth = 3;
+                    ctx.strokeStyle = '#4ade80';
+                    ctx.beginPath(); ctx.arc(intersectX, mirrorY, r, normalRad, incidentRad, true); ctx.stroke();
+                    ctx.strokeStyle = '#fbbf24';
+                    ctx.beginPath(); ctx.arc(intersectX, mirrorY, r, normalRad, reflectedRad, false); ctx.stroke();
+                    ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
+                    ctx.fillStyle = '#4ade80'; ctx.fillText(displayDeg.toFixed(1) + "°", intersectX - 50, mirrorY - 90);
+                    ctx.fillStyle = '#fbbf24'; ctx.fillText(displayDeg.toFixed(1) + "°", intersectX + 50, mirrorY - 90);
+                }
+                readout.innerText = `θᵢ : ${displayDeg.toFixed(1)}° | θᵣ : ${displayDeg.toFixed(1)}°`;
+            }
+        }
+
+        // 4. Labeled Protractor
+        if (showProtractor) {
+            ctx.save(); ctx.translate(protractor.x, protractor.y); ctx.globalAlpha = 0.7;
+            ctx.fillStyle = '#fde047'; ctx.beginPath(); ctx.arc(0, 0, protractor.radius, Math.PI, 0); ctx.fill();
+            ctx.globalAlpha = 1; ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.font = '12px Arial'; ctx.fillStyle = '#000'; ctx.textAlign = 'center';
+            for(let i=0; i<=180; i+=10) {
+                const a = (i+180)*Math.PI/180;
+                const inner = i % 30 === 0 ? 0.8 : 0.9;
+                ctx.beginPath(); ctx.moveTo(Math.cos(a)*protractor.radius, Math.sin(a)*protractor.radius);
+                ctx.lineTo(Math.cos(a)*protractor.radius*inner, Math.sin(a)*protractor.radius*inner); ctx.stroke();
+                if(i % 30 === 0) {
+                    const tx = Math.cos(a) * (protractor.radius - 25);
+                    const ty = Math.sin(a) * (protractor.radius - 25);
+                    ctx.fillText(180 - i, tx, ty + 5);
+                }
+            }
+            ctx.restore();
+        }
+
+        // 5. Laser Housing
+        ctx.save(); ctx.translate(laser.x, laser.y); ctx.rotate(laser.angle);
+        ctx.fillStyle = '#334155'; ctx.fillRect(-10, -15, 50, 30);
+        ctx.fillStyle = 'var(--accent)'; ctx.beginPath(); ctx.arc(60, 0, 10, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+    }
+    document.querySelectorAll('input').forEach(i => i.addEventListener('change', render));
+    render();
+</script>
+</body>
+</html>

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Physics Lab: Vernier Caliper</title>
+    <style>
+        :root {
+            --steel: #dfe6e9;
+            --dark-steel: #636e72;
+            --physics-blue: #2d3436;
+            --highlight: #d63031;
+            --success: #27ae60;
+            --info: #0984e3;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f1f2f6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .lab-container {
+            background: white;
+            width: 1100px;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        /* LC Derivation Styles */
+        .derivation-box {
+            background: #e3f2fd;
+            border-left: 5px solid var(--info);
+            padding: 20px;
+            margin-bottom: 25px;
+            border-radius: 0 8px 8px 0;
+            line-height: 1.6;
+        }
+
+        .formula { font-family: "Courier New", Courier, monospace; font-weight: bold; color: var(--physics-blue); }
+
+        #sim-area {
+            width: 100%;
+            height: 450px;
+            background: #ffffff;
+            border: 2px solid var(--dark-steel);
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .tray {
+            display: flex; gap: 20px; justify-content: center;
+            padding: 15px; background: #f8f9fa; border-radius: 10px; margin-bottom: 20px;
+        }
+
+        .obj { cursor: grab; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+
+        #obj-1 { width: 114px; height: 100px; background: #0984e3; border-radius: 50%; }
+        #obj-2 { width: 78px; height: 78px; background: #00b894; }
+        #obj-3 { width: 153px; height: 50px; background: #6c5ce7; }
+        #obj-4 { width: 46px; height: 120px; background: #e17055; }
+
+        #main-beam {
+            position: absolute; top: 100px; left: 0;
+            width: 1000px; height: 80px;
+            background: var(--steel);
+            border-bottom: 1px solid #333;
+            z-index: 5;
+        }
+
+        #fixed-jaw {
+            position: absolute; top: 100px; left: 100px;
+            width: 45px; height: 282px;
+            background: var(--dark-steel);
+            border-radius: 0 0 5px 25px;
+            z-index: 4;
+        }
+
+        #vernier-unit {
+            position: absolute; top: 100px; left: 600px;
+            width: 200px; height: 350px;
+            cursor: ew-resize; z-index: 10;
+        }
+
+        #v-plate {
+            width: 160px; height: 80px;
+            background: rgba(223, 230, 233, 0.7);
+            border: 1px solid #636e72;
+            position: relative;
+        }
+
+        #v-jaw { width: 45px; height: 200px; background: var(--dark-steel); border-radius: 0 0 25px 5px; }
+
+        #active-slot { position: absolute; top: 190px; left: 145px; z-index: 6; }
+
+        .feedback {
+            display: flex; gap: 40px; justify-content: center;
+            font-size: 1.3rem; margin-bottom: 15px; background: #2d3436;
+            color: white; padding: 15px; border-radius: 8px;
+        }
+
+        .controls { display: flex; gap: 15px; margin-bottom: 20px; }
+        .btn { padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-size: 1.1rem; font-weight: bold; transition: opacity 0.2s; }
+        .btn-record { background: var(--success); color: white; flex: 2; }
+        .btn-reset { background: var(--dark-steel); color: white; flex: 1; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: center; }
+        th { background: var(--physics-blue); color: white; }
+    </style>
+</head>
+<body>
+
+<div class="lab-container">
+    <h2 style="text-align: center;">Physics Lab: Vernier Caliper Measurement</h2>
+
+    <div class="derivation-box">
+        <strong>Least Count (LC) Derivation:</strong><br>
+        1 Main Scale Division (MSD) = <span class="formula">0.1 cm</span><br>
+        10 Vernier Scale Divisions (VSD) = 9 MSD = <span class="formula">0.9 cm</span><br>
+        Value of 1 VSD = 0.9 / 10 = <span class="formula">0.09 cm</span><br><br>
+        <strong>Least Count (LC) = 1 MSD - 1 VSD</strong><br>
+        Substitution: <span class="formula">LC = 0.1 cm - 0.09 cm = 0.01 cm</span>
+    </div>
+
+    <div class="tray">
+        <div id="obj-1" class="obj" draggable="true" ondragstart="startDrag(event)">A</div>
+        <div id="obj-2" class="obj" draggable="true" ondragstart="startDrag(event)">B</div>
+        <div id="obj-3" class="obj" draggable="true" ondragstart="startDrag(event)">C</div>
+        <div id="obj-4" class="obj" draggable="true" ondragstart="startDrag(event)">D</div>
+    </div>
+
+    <div id="sim-area" ondrop="handleDrop(event)" ondragover="allowDrop(event)">
+        <div id="fixed-jaw"></div>
+        <div id="main-beam"></div>
+        <div id="active-slot"></div>
+        <div id="vernier-unit">
+            <div id="v-plate"></div>
+            <div id="v-jaw"></div>
+        </div>
+    </div>
+
+    <div class="feedback">
+        <div>MSR: <span id="disp-msr">--</span> cm</div>
+        <div>VSR: <span id="disp-vsr">--</span> div</div>
+        <div>Total: <span id="disp-total">--</span> cm</div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-record" onclick="logData()">Record Observation</button>
+        <button class="btn btn-reset" onclick="resetLab()">Reset Lab</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Trial</th>
+                <th>Sample</th>
+                <th>MSR (cm)</th>
+                <th>VSR (div)</th>
+                <th>Total = MSR + (VSR × 0.01) cm</th>
+            </tr>
+        </thead>
+        <tbody id="obs-body"></tbody>
+    </table>
+</div>
+
+<script>
+    const beam = document.getElementById('main-beam');
+    const plate = document.getElementById('v-plate');
+    const unit = document.getElementById('vernier-unit');
+    const slot = document.getElementById('active-slot');
+    
+    let objW = 0, objN = "", dragging = false, trials = 0;
+
+    function initScales() {
+        for(let i=0; i<=60; i++) {
+            let m = document.createElement('div');
+            m.style.cssText = `position:absolute; left:${145 + i*10}px; bottom:0; width:2px; height:${i%10==0?'45px':(i%5==0?'30px':'18px')}; background:#222;`;
+            beam.appendChild(m);
+            if(i%10==0) {
+                let t = document.createElement('div');
+                t.innerText = i/10;
+                t.style.cssText = `position:absolute; left:${140 + i*10}px; top:10px; font-weight:bold;`;
+                beam.appendChild(t);
+            }
+        }
+        for(let i=0; i<=10; i++) {
+            let v = document.createElement('div');
+            v.style.cssText = `position:absolute; left:${i*9-0.3}px; bottom:0; width:2px; height:45px; background:red;`;
+            plate.appendChild(v);
+        }
+    }
+
+    function allowDrop(e) { e.preventDefault(); }
+    function startDrag(e) { e.dataTransfer.setData("id", e.target.id); }
+    function handleDrop(e) {
+        e.preventDefault();
+        const id = e.dataTransfer.getData("id");
+        const source = document.getElementById(id);
+        objW = source.offsetWidth; 
+        objN = source.innerText;
+        slot.innerHTML = '';
+        slot.appendChild(source.cloneNode(true));
+        unit.style.left = '600px'; 
+    }
+
+    unit.addEventListener('mousedown', () => dragging = true);
+    document.addEventListener('mouseup', () => dragging = false);
+    document.addEventListener('mousemove', (e) => {
+        if(!dragging) return;
+        let rect = document.getElementById('sim-area').getBoundingClientRect();
+        let x = Math.round(e.clientX - rect.left);
+        let limit = 145 + objW;
+        if (x < limit && objW > 0) x = limit;
+        if(x < 145) x = 145;
+        unit.style.left = x + 'px';
+        
+        let rawPixels = x - 145;
+        let totalCm = rawPixels / 100;
+        let msr = Math.floor(totalCm * 10) / 10;
+        let vsr = Math.round((totalCm - msr) * 100);
+        
+        document.getElementById('disp-msr').innerText = msr.toFixed(1);
+        document.getElementById('disp-vsr').innerText = vsr;
+        document.getElementById('disp-total').innerText = totalCm.toFixed(2);
+    });
+
+    function logData() {
+        if(objW === 0) return;
+        trials++;
+        const msr = document.getElementById('disp-msr').innerText;
+        const vsr = document.getElementById('disp-vsr').innerText;
+        const total = document.getElementById('disp-total').innerText;
+        document.getElementById('obs-body').innerHTML += `<tr><td>${trials}</td><td>Object ${objN}</td><td>${msr}</td><td>${vsr}</td><td>${msr} + (${vsr} × 0.01) = <b>${total} cm</b></td></tr>`;
+        slot.innerHTML = '';
+        objW = 0;
+        unit.style.left = '600px';
+    }
+
+    function resetLab() {
+        trials = 0; objW = 0; objN = "";
+        document.getElementById('obs-body').innerHTML = '';
+        slot.innerHTML = ''; unit.style.left = '600px';
+        document.getElementById('disp-msr').innerText = '--';
+        document.getElementById('disp-vsr').innerText = '--';
+        document.getElementById('disp-total').innerText = '--';
+    }
+
+    initScales();
+</script>
+</body>
+</html>

@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Simple Pendulum Lab - Theoretical Analysis</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 0; background:#0b0f17; color:#e8eefc; overflow-x: hidden; }
+    .wrap { display:grid; grid-template-columns: 1fr 360px; gap: 16px; padding: 16px; max-width: 1400px; margin: 0 auto; }
+    
+    canvas { 
+      width: 100%; 
+      height: 800px; 
+      background:#080c14; 
+      border:1px solid rgba(255,255,255,.1); 
+      border-radius: 12px;
+      display: block;
+    }
+
+    .panel { background:#0f1625; border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:20px; height: fit-content; }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:15px 0; }
+    label { font-size: 14px; opacity:.9; }
+    input[type="range"] { width: 100%; cursor: pointer; }
+    .readout { font-variant-numeric: tabular-nums; font-size: 15px; text-align:right; font-weight: bold; color: #4fc3f7; }
+    .btns { display:flex; gap:10px; margin-top:20px; }
+    button {
+      flex:1; padding:14px; border-radius:10px; border:1px solid rgba(255,255,255,.15);
+      background:#1a2536; color:#e8eefc; cursor:pointer; font-weight: 600; transition: 0.2s;
+    }
+    button:hover { background: #25354d; border-color: #4fc3f7; }
+    .small { font-size: 13px; opacity:.7; }
+    hr { border:none; border-top:1px solid rgba(255,255,255,.1); margin:20px 0; }
+    
+    .formulaBox {
+      background: rgba(79, 195, 247, 0.05);
+      border: 1px solid rgba(79, 195, 247, 0.2);
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #b3e5fc;
+      line-height: 1.6;
+    }
+
+    .time-display {
+        font-size: 2rem;
+        text-align: center;
+        color: #fff;
+        font-family: monospace;
+        background: rgba(255,255,255,0.03);
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <canvas id="c" width="1000" height="800"></canvas>
+
+    <div class="panel">
+      <div class="row"><strong style="font-size: 1.2em;">Simple Pendulum Lab</strong></div>
+      
+      <div class="row">
+        <label>String Length (L)</label>
+        <span class="readout" id="lVal">2.50 m</span>
+      </div>
+      <input id="lInput" type="range" min="0.5" max="5.0" step="0.1" value="2.5" />
+
+      <div class="row">
+        <label>Gravity (g)</label>
+        <span class="readout" id="gVal">9.80 m/s²</span>
+      </div>
+      <input id="gInput" type="range" min="1.0" max="25.0" step="0.1" value="9.8" />
+
+      <div class="row">
+        <label>Bob Mass (m)</label>
+        <span class="readout" id="mVal">1.00 kg</span>
+      </div>
+      <input id="mInput" type="range" min="0.1" max="5.0" step="0.1" value="1.0" />
+      
+      <div class="btns">
+        <button id="start" style="background: #2e7d32;">START</button>
+        <button id="reset">RESET</button>
+      </div>
+
+      <hr />
+      <div class="row"><strong>Theoretical Calculation</strong></div>
+      <div id="formulaBox" class="formulaBox"></div>
+      <div class="row"><span class="small">Expected Period (T)</span><span class="readout" id="theoTVal">—</span></div>
+
+      <hr />
+      <div class="row"><strong>Experiment Logs</strong></div>
+      <div class="row"><span class="small">Oscillations</span><span class="readout" id="cycleVal">0</span></div>
+      <div class="row"><span class="small">Measured Period</span><span class="readout" id="lastTVal">—</span></div>
+
+      <hr />
+      <div class="row"><strong>Elapsed Time</strong></div>
+      <div class="time-display" id="tLive">0.00s</div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+
+    const lInput = document.getElementById("lInput"), gInput = document.getElementById("gInput"), mInput = document.getElementById("mInput");
+    const lVal = document.getElementById("lVal"), gVal = document.getElementById("gVal"), mVal = document.getElementById("mVal");
+    const tLive = document.getElementById("tLive"), lastTVal = document.getElementById("lastTVal");
+    const theoTVal = document.getElementById("theoTVal"), cycleVal = document.getElementById("cycleVal");
+    const startBtn = document.getElementById("start"), resetBtn = document.getElementById("reset");
+    const formulaBox = document.getElementById("formulaBox");
+
+    // Physics
+    let running = false;
+    let t = 0;
+    const theta0 = 30 * (Math.PI / 180); // Initial displacement
+    const startAngle = -theta0;
+    let angle = startAngle;
+    let angleVel = 0;
+    let L = 2.5, G = 9.8, M = 1.0;
+
+    // Cycle Detection
+    let lastAngleVel = 0;
+    let oscillationCount = 0;
+    let startTimeOfCycle = 0;
+    let flashMessage = "";
+    let flashTimer = 0;
+
+    // Visuals
+    const PXM = 130; 
+    const pivotX = 500;
+    const pivotY = 100;
+
+    function sync() {
+      L = parseFloat(lInput.value);
+      G = parseFloat(gInput.value);
+      M = parseFloat(mInput.value);
+      lVal.textContent = L.toFixed(2) + " m";
+      gVal.textContent = G.toFixed(2) + " m/s²";
+      mVal.textContent = M.toFixed(2) + " kg";
+      
+      // T = 2π√(L/g) * (1 + 1/16 * θ²)
+      const baseT = 2 * Math.PI * Math.sqrt(L / G);
+      const correction = 1 + (1/16) * Math.pow(theta0, 2);
+      const finalT = baseT * correction;
+
+      theoTVal.textContent = finalT.toFixed(2) + " s";
+
+      formulaBox.innerHTML = `T ≈ 2π√(${L.toFixed(2)} / ${G.toFixed(2)}) × 1.017<br><b>T = ${finalT.toFixed(2)} s</b>`;
+      
+      if (!running) {
+          angle = startAngle;
+          angleVel = 0;
+          lastAngleVel = 0;
+          t = 0;
+          oscillationCount = 0;
+          flashTimer = 0;
+          tLive.textContent = "0.00s";
+          cycleVal.textContent = "0";
+          lastTVal.textContent = "—";
+      }
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Support Beam
+      ctx.strokeStyle = "rgba(255,255,255,0.15)";
+      ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.moveTo(pivotX - 80, pivotY - 10); ctx.lineTo(pivotX + 80, pivotY - 10); ctx.stroke();
+
+      const currentLen = L * PXM;
+      const bobX = pivotX + Math.sin(angle) * currentLen;
+      const bobY = pivotY + Math.cos(angle) * currentLen;
+
+      // String
+      ctx.strokeStyle = "#4fc3f7";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(pivotX, pivotY); ctx.lineTo(bobX, bobY); ctx.stroke();
+
+      // Bob
+      const radius = 12 + (M * 6);
+      ctx.save();
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = "#ff5252";
+      ctx.fillStyle = "#ff5252";
+      ctx.beginPath(); ctx.arc(bobX, bobY, radius, 0, Math.PI * 2); ctx.fill();
+      
+      // Gloss
+      ctx.fillStyle = "rgba(255,255,255,0.3)";
+      ctx.beginPath(); ctx.arc(bobX - radius/3, bobY - radius/3, radius/4, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+
+      // Flash Message
+      if (flashTimer > 0) {
+        ctx.save();
+        ctx.fillStyle = `rgba(79, 195, 247, ${Math.min(1, flashTimer / 30)})`;
+        ctx.font = "bold 48px system-ui";
+        ctx.textAlign = "center";
+        ctx.fillText(flashMessage, pivotX, pivotY + currentLen/2);
+        ctx.restore();
+        flashTimer--;
+      }
+    }
+
+    function step() {
+      if (!running) return;
+
+      const dt = 0.016; 
+      t += dt;
+
+      const angleAccel = -(G / L) * Math.sin(angle);
+      lastAngleVel = angleVel;
+      angleVel += angleAccel * dt;
+      angle += angleVel * dt;
+
+      // Cycle completion detection
+      if (lastAngleVel < 0 && angleVel >= 0 && angle < (startAngle + 0.05)) {
+          const measuredPeriod = t - startTimeOfCycle;
+          oscillationCount++;
+          
+          // Use the calculated theoretical period instead of the measured one
+// Use the calculated theoretical period instead of the measured one
+flashMessage = `${theoTVal.textContent}`;
+          flashTimer = 100; 
+          
+          cycleVal.textContent = oscillationCount;
+          lastTVal.textContent = measuredPeriod.toFixed(2) + " s";
+          
+          startTimeOfCycle = t; 
+      }
+
+      tLive.textContent = t.toFixed(2) + "s";
+    }
+
+    function loop() {
+      step();
+      render();
+      requestAnimationFrame(loop);
+    }
+
+    startBtn.onclick = () => {
+      if (!running) {
+        running = true;
+        startTimeOfCycle = 0;
+        t = 0;
+        oscillationCount = 0;
+        startBtn.textContent = "PAUSE";
+        startBtn.style.background = "#fb8c00";
+      } else {
+        running = false;
+        startBtn.textContent = "RESUME";
+        startBtn.style.background = "#2e7d32";
+      }
+    };
+
+    resetBtn.onclick = () => {
+      running = false;
+      sync();
+      startBtn.textContent = "START";
+      startBtn.style.background = "#2e7d32";
+    };
+
+    [lInput, gInput, mInput].forEach(input => input.oninput = sync);
+
+    sync();
+    loop();
+  </script>
+</body>
+</html>
